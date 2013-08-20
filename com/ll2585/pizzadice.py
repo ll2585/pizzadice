@@ -23,12 +23,12 @@ def rollDice(color):
     
 
 def runGame():
-    cup = [GREEN, GREEN, GREEN, GREEN, GREEN, GREEN,  YELLOW, YELLOW, YELLOW, YELLOW, RED, RED, RED]
+    cup = [GREEN] * 6 +[YELLOW] * 4 +[RED]*3
     hand = []
     random.shuffle(cup)
     hand.append(cup.pop())
     hand.append(cup.pop())
-    hand.append(cup.pop())
+    hand.append(cup.pop()) 
     for c in hand:
         print (rollDice(c))
     
