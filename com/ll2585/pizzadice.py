@@ -5,20 +5,11 @@ YELLOW = "YELLOW"
 BRAIN = "BRAIN"
 SHOTGUN = "SHOTGUN"
 FEET = "FEET"
+LOGGING = True
 
-def rollDice(color):
-    side = random.randint(1,6)
-    if color == RED:
-        return BRAIN if side == 1 else SHOTGUN if side < 5 else FEET
-    if color == YELLOW:
-        return BRAIN if side < 3 else SHOTGUN if side < 5 else FEET
-    if color == GREEN:
-        return BRAIN if side < 4 else SHOTGUN if side < 5 else FEET
-    
 
 def runGame(playerList):
-    global CURPLAYER, BASECUP, CURCUP, CURHAND, NUMBLASTS, NUMBRAINS, BRAINDICE
-    scores = dict([(player.name, 0) for player in playerList])
+    scores = dict([(i, 0) for i in range(len(playerList))])
     CUP = [GREEN]*6+  [YELLOW] * 4 + [RED]*3
     
     gameState = {'players': playerList,
@@ -26,26 +17,75 @@ def runGame(playerList):
                  'round': 0}
     #play 1 round
     while True:
+        playerIndex = 0
         for player in playerList:
-            CURPLAYER = player
             CURCUP = list(CUP)
             random.shuffle(CURCUP)
             hand = []
-            NUMBLASTS = 0
-            NUMBRAINS = 0
-            BRAINDICE = []
-            player.go(gameState) #loop for this guys turn
+            keptDice = []
+            curSituation = {'cup': CURCUP,
+                            'hand': hand,
+                            'keptDice': keptDice,
+                            'brainsSaved': 0
+                            }
+            player.go(gameState, curSituation) #loop for this guys turn; returns when he is done
+            NUMBRAINS = player.brainsRolledThisTurn()
+            NUMBLASTS = player.shotgunsRolledThisTurn()
             if NUMBLASTS < 3:
-                gameState[scores][player.name] += 
+                gameState['scores'][playerIndex] += NUMBRAINS
+            playerIndex += 1
             
-            
-def roll():
+#returns a situation
+def roll(player, situation):
+    keptDice = situation['keptDice']
+    hand = situation['hand']
+    cup = situation['cup']
+    brainsSaved = situation['brainsSaved']
+    random.shuffle(cup)
+    while len(hand) < 3:
+        #insert code to deal with no more cups but whatever for now
+        hand.append(cup.pop())
+    if LOGGING:
+        print("The hand is %s" %(hand))
+    rolledDice = rollDice(hand)
+    hand = []
+    for d in rolledDice:
+        if d[1] != "FEET":
+            keptDice.append(d)
+        else:
+            hand.append(d[0])
+    #if LOGGING:
+        #print("rolled %s" %(rolledDice))
+    return {'cup': cup, 'hand': hand, 'keptDice': keptDice, 'brainsSaved': brainsSaved}
     
-    print("1")
+def rollDice(hand):
+    rolls = []
+    for die in hand:
+        color = die
+        side = random.randint(1,6)
+        result = ()
+        if color == RED:
+            result = (color, BRAIN) if side == 1 else (color, SHOTGUN) if side < 5 else (color, FEET)
+        if color == YELLOW:
+            result = (color, BRAIN) if side < 3 else (color, SHOTGUN) if side < 5 else (color, FEET)
+        if color == GREEN:
+            result = (color, BRAIN) if side < 4 else (color, SHOTGUN) if side < 5 else (color, FEET)
+        rolls.append(result)
+    return rolls
+    
+
+def rolledThreeShotguns(situation):
+    shotguns = 0
+    if len(situation['keptDice']) > 0:
+        for d in situation['keptDice']:
+            if d[1] == "SHOTGUN":
+                shotguns += 1
+    return shotguns == 3
     
 
 if __name__ == '__main__':
     human = pizzadiceplayers.Human()
     dumbbot = pizzadiceplayers.Dumbbot()
-    players = [human, dumbbot]
+    dumbbot2 = pizzadiceplayers.Dumbbot()
+    players = [dumbbot2, dumbbot]
     runGame(players)
