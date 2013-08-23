@@ -1,57 +1,70 @@
-from pizzadice import roll, rolledThreeShotguns
+from pizzadice import roll
 import random
 
 class Player:
-    def __init__(self):
+    def __init__(self, name):
         self.brains = 0
-        self.name = "Me"
-        self.brainsRolled = 0
-        self.shotgunsRolled = 0
+        self.type = "GENERIC"
+        self.name = name
     
-    def go(self, gameState, situation):
-        self.reset()
-        results = roll(self, situation) #first roll
-        self.updateResults(results)
-        self.goAgain(gameState, situation, results)
+    def updateName(self):
+        self.name = "%s - %s" %(self.name, self.type)
     
-    def goAgain(self, gameState, situation, results):
+    def chooseToRollAgain(self, gameState, situation, results):
         pass
         
-    def brainsRolledThisTurn(self):
-        return self.brainsRolled
-    
-    def shotgunsRolledThisTurn(self):
-        return self.shotgunsRolled
-    
-    def updateResults(self, situation):
-        rolledDice = situation['keptDice']
-        if len(rolledDice) > 0:
-            for d in rolledDice:
-                if d[1] == "SHOTGUN":
-                    self.shotgunsRolled += 1
-                if d[1] == "BRAIN":
-                    self.brainsRolled += 1
-            self.brainsRolled += situation['brainsSaved']
-            if self.shotgunsRolled >= 3:
-                self.brainsRolled = 0
-    
-    def reset(self):
-        self.brainsRolled = 0
-        self.shotgunsRolled = 0
+    def rollAgain(self, gameState, situation):
+        return self.chooseToRollAgain(gameState, situation)
         
 class Human(Player):
-    def __init__(self):
-        super(Human, self).__init__()
+    def __init__(self, name):
+        super(Human, self).__init__(name)
         
 class Dumbbot(Player):
-    def __init__(self):
-        super(Dumbbot, self).__init__()
-        self.name = "Dumb Bot"
-        
-    def goAgain(self, gameState, situation, results):
+    def __init__(self, name):
+        super(Dumbbot, self).__init__(name)
+        self.type = "Dumb Bot"
+        self.updateName()
+
+    def chooseToRollAgain(self, gameState, situation):
+        if situation['brainsRolled'] == 0: return True
         reRoll = random.randint(0,1)
-        while not(rolledThreeShotguns(results)) and reRoll == 1:
-            results = roll(self, situation)
-            self.updateResults(results)
-            reRoll = random.randint(0,1)
+        return reRoll == 1
+        
+class ScaredBot(Player):
+    def __init__(self, name, stopAt = 2):
+        super(ScaredBot, self).__init__(name)
+        self.type = "Scared Bot"
+        self.updateName()
+        self.stopAt = stopAt
+
+    def chooseToRollAgain(self, gameState, situation):
+        shotGunsRolled = 0
+        for d in situation['keptDice']:
+            if d[1] == "SHOTGUN":
+                shotGunsRolled+=1
+        return shotGunsRolled < self.stopAt
+    
+class RollsUntilInTheLeadBot(Player):
+    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
+
+    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
+    def __init__(self, name, buffer=0, stopAt = 2):
+        super(RollsUntilInTheLeadBot, self).__init__(name)
+        self.type = "Greedy Bot"
+        self.updateName()
+        self.buffer = buffer
+        self.alternateStrat = ScaredBot(name + "_alt", stopAt)
+
+    def chooseToRollAgain(self, gameState, situation):
+        maxScore = 0
+        name = ""
+        for key in gameState['scores']:
+            if gameState['scores'][key] > maxScore:
+                maxScore = gameState['scores'][key]
+                name = key
+        if name != self.name and maxScore >= gameState['scores'][self.name] +situation['brainsRolled']+ self.buffer:
+            return True
+        else:
+            return self.alternateStrat.rollAgain(gameState, situation)
         
