@@ -1,5 +1,4 @@
-import random
-
+import random, pizzadiceplayers
 RED = "RED"
 GREEN = "GREEN"
 YELLOW = "YELLOW"
@@ -7,11 +6,6 @@ BRAIN = "BRAIN"
 SHOTGUN = "SHOTGUN"
 FEET = "FEET"
 
-class Player:
-    def __init__(self):
-        self.brains = 0
-        
-        
 def rollDice(color):
     side = random.randint(1,6)
     if color == RED:
@@ -31,7 +25,36 @@ def runGame():
     hand.append(cup.pop()) 
     for c in hand:
         print (rollDice(c))
+def runGame(playerList):
+    global CURPLAYER, BASECUP, CURCUP, CURHAND, NUMBLASTS, NUMBRAINS, BRAINDICE
+    scores = dict([(player.name, 0) for player in playerList])
+    CUP = [GREEN]*6+  [YELLOW] * 4 + [RED]*3
+    
+    gameState = {'players': playerList,
+                 'scores': scores,
+                 'round': 0}
+    #play 1 round
+    while True:
+        for player in playerList:
+            CURPLAYER = player
+            CURCUP = list(CUP)
+            random.shuffle(CURCUP)
+            hand = []
+            NUMBLASTS = 0
+            NUMBRAINS = 0
+            BRAINDICE = []
+            player.go(gameState) #loop for this guys turn
+            if NUMBLASTS < 3:
+                gameState[scores][player.name] += 
+            
+            
+def roll():
+    
+    print("1")
     
 
 if __name__ == '__main__':
-    runGame()
+    human = pizzadiceplayers.Human()
+    dumbbot = pizzadiceplayers.Dumbbot()
+    players = [human, dumbbot]
+    runGame(players)
