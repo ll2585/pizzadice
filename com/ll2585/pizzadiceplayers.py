@@ -1,5 +1,5 @@
-from pizzadice import roll
 import random
+
 
 class Player:
     def __init__(self, name):
@@ -10,15 +10,19 @@ class Player:
     def updateName(self):
         self.name = "%s - %s" %(self.name, self.type)
     
-    def chooseToRollAgain(self, gameState, situation, results):
+    def chooseToRollAgain(self, gameState, situation):
         pass
-        
-    def rollAgain(self, gameState, situation):
-        return self.chooseToRollAgain(gameState, situation)
         
 class Human(Player):
     def __init__(self, name):
         super(Human, self).__init__(name)
+        
+    def chooseToRollAgain(self, gameState, situation):
+        print("rolled %s" %(situation['rolledDice']))
+        result = input("Roll again (Y/N)?: ")
+        while result != "Y" and result != "N":
+            result = input("Roll again (Y/N)?: ")
+        return True if result == "Y" else False
         
 class Dumbbot(Player):
     def __init__(self, name):
@@ -66,5 +70,65 @@ class RollsUntilInTheLeadBot(Player):
         if name != self.name and maxScore >= gameState['scores'][self.name] +situation['brainsRolled']+ self.buffer:
             return True
         else:
-            return self.alternateStrat.rollAgain(gameState, situation)
+            return self.alternateStrat.chooseToRollAgain(gameState, situation)
         
+        
+class MonteCarloBot(Player):
+    """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
+    The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
+    def __init__(self, name, riskiness=50, numExperiments=100):
+        super(MonteCarloBot, self).__init__(name)
+        self.type = "MonteCarlo Bot"
+        self.updateName()
+        self.riskiness = riskiness
+        self.numExperiments = numExperiments
+
+    def chooseToRollAgain(self, gameState, situation):
+        from pizzadice import shotgunsRolled
+        shotguns = shotgunsRolled(situation)
+        while True:
+            # run experiments
+            deaths = 0
+            for i in range(self.numExperiments):
+                if shotguns + self.simulatedRollShotguns(situation) >= 3:
+                    deaths += 1
+
+            # roll if percentage of deaths < riskiness%
+            if deaths / float(self.numExperiments) * 100 < self.riskiness:
+                return True
+            else:
+                return False
+
+    def simulatedRollShotguns(self, situation):
+        import copy
+        """Calculates the number of shotguns rolled with the current cup and rolled brains. (Rolled brains is only used in the rare case that we run out of dice.)"""
+        shotguns = 0
+        cup = copy.copy(situation['cup'])
+        rolledBrains = situation['brainsRolled']
+        keptDice = copy.copy(situation['keptDice'])
+
+        # "ran out of dice", so put the rolled brains back into the cup
+        if len(cup) < 3:
+            newKept = []
+            for d in keptDice:
+                if d[1] == "BRAIN":
+                    cup.append(d[0])
+                else:
+                    newKept.append(d)
+            keptDice = newKept
+
+        # add new dice to hand from cup until there are 3 dice in the hand
+        hand = copy.copy(situation['hand'])
+        while len(hand) < 3:
+            hand.append(cup.pop())
+            
+        from pizzadice import rollDice
+        # roll the dice
+        results = rollDice(hand)
+
+        # count the shotguns and remove them from the hand
+        for d in results:
+            if d[1] == "SHOTGUN":
+                shotguns += 1
+
+        return shotguns
